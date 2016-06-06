@@ -7,6 +7,7 @@ package server;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -20,34 +21,36 @@ import java.util.List;
  * @author Андрей
  */
 public class ThreadServerSocket implements Runnable {
-    boolean isDone;
     List<ThreadListenSocket> listThreadListenSocket = new ArrayList<ThreadListenSocket>();
     List<Socket> listSocket = new ArrayList<Socket>();
-//    List<String> listMessages = new ArrayList<String>(32);
     
-    private int serverPort;
+    private ServerSocket serverSocket; // create a server socket and bind it to the port
     private String name;
     Thread t;
     
-        ThreadServerSocket(int port) {
-                isDone = false;
-                serverPort = port;
+        ThreadServerSocket(ServerSocket serversocket) {
+                serverSocket = serversocket;
                 name = "Thread of server socket";
         	System.out.println(name);
 // Create a thread of server socket and start                
                 t = new Thread(this, name);
                 t.start();
         }        
-	public void run() {
+        public void run() {
             try	{
-                ServerSocket serverSocket = new ServerSocket(serverPort); // create a server socket and bind it to the port
                 ThreadMessages threadMessages = new ThreadMessages(listThreadListenSocket, listSocket);
                     
-                while(!isDone) {
+                while(t.isAlive()) {
          	 
                     System.out.println("Waiting for the client...");
                     Socket socket = new Socket();
-                    socket = serverSocket.accept(); // Server wait connection
+
+                    try {
+                        socket = serverSocket.accept(); // Server wait connection
+                    }
+                    catch (IOException ignored) { 
+                        break; 
+                    }
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     String nick = in.readLine(); // Waiting string from the client with nick.
                     
@@ -57,33 +60,18 @@ public class ThreadServerSocket implements Runnable {
                     }
                     out.println("end");
                     out.flush();
-                    
-                    for (int i=0; i<listThreadListenSocket.size();) {
-                        if (listThreadListenSocket.get(i).t.isInterrupted()) {
-                            listThreadListenSocket.remove(i);
-                            if (listSocket.get(i).isClosed()) {
-                                listSocket.remove(i);
-                            }
-                            continue;
-                        }
-                        i++;
-                    }
-                    System.out.println("Next index socket " + listSocket.size() + " and thread " + listThreadListenSocket.size());
-                    
+
                     listSocket.add(socket);
-                    ThreadListenSocket listen = new ThreadListenSocket((listThreadListenSocket.size() + 1) + ". Thread listen " + nick, socket);
+                    ThreadListenSocket listen = new ThreadListenSocket((listThreadListenSocket.size()) + ". Thread listen " + nick, socket);
                     listThreadListenSocket.add(listen);
                     
                 }
-                threadMessages.isDone = true;
                 if (!threadMessages.t.isInterrupted()) {
                     threadMessages.t.interrupt();
-                    threadMessages.t.wait(500);
                 }
                 for (int i=0; i<listThreadListenSocket.size(); i++) {
                     if (!listThreadListenSocket.get(i).t.isInterrupted()) {
                         listThreadListenSocket.get(i).t.interrupt();
-                        listThreadListenSocket.get(i).t.wait(10);
                     }
                     listSocket.get(i).close();
                     listSocket.remove(i);
@@ -92,6 +80,9 @@ public class ThreadServerSocket implements Runnable {
             catch(Exception except) {
 		System.out.println(">> " + name + " is interrupted");
                 except.printStackTrace(); 
+            }
+            finally {
+                System.out.println(">> " + name + " is over");
             }
         }
 }

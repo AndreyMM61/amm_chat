@@ -21,9 +21,8 @@ import java.util.List;
  *
  * @author Андрей
  */
-public class ThreadMessages {
+public class ThreadMessages implements Runnable {
        	LinkedList<String> Messages;
-        boolean isDone;
 
         private List<ThreadListenSocket> listThreadListenSocket;
         private List<Socket> listSocket; 
@@ -32,7 +31,6 @@ public class ThreadMessages {
 
         ThreadMessages (List<ThreadListenSocket> listthreadlistensocket, List<Socket> listsocket) {
             try {
-                isDone = false;
                 listThreadListenSocket = listthreadlistensocket;
                 listSocket = listsocket;
                 name = "Thread of messages";
@@ -50,9 +48,9 @@ public class ThreadMessages {
                 
 	public void run() {
             try	{
-                while (!t.isInterrupted()) {
+                while (t.isAlive()) {
                     for (int i=0; i<listThreadListenSocket.size(); i++) {
-//                        if (!listThreadListenSocket.get(i).messages.isEmpty()) {
+                        if (!listThreadListenSocket.get(i).messages.isEmpty()) {
                             while (!listThreadListenSocket.get(i).messages.isEmpty()) {
                                 String msg = listThreadListenSocket.get(i).messages.poll();
                                 Messages.addLast(msg);
@@ -60,7 +58,7 @@ public class ThreadMessages {
                                     Messages.remove();
                                 }
                                 for (int j=0; j<listThreadListenSocket.size(); j++) {
-                                    if (!listThreadListenSocket.get(j).equals(listThreadListenSocket.get(i))) {
+                                    if (j != i) {
                                         PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(listSocket.get(j).getOutputStream())), true);
                                         out.println(msg);
                                         out.flush();
@@ -68,14 +66,17 @@ public class ThreadMessages {
                                     }
                                 }
                             }
-//                        }
+                        }
                     }
- //                   Thread.sleep(20);
+                    Thread.sleep(200);
                 }
             } 
             catch(Exception except) {
 		System.out.println(">> " + name + " is interrupted");
                 except.printStackTrace(); 
+            }
+            finally {
+                System.out.println(">> " + name + " is over");
             }
         }
 }

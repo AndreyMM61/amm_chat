@@ -21,8 +21,9 @@ public class ServerChat
         int    serverPort  = Integer.parseInt(args[0]);   // the port to which the server binds
        
         try {
+            ServerSocket serverSocket = new ServerSocket(serverPort); // create a server socket and bind it to the port
             BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in));
-            ThreadServerSocket threadServerSocket = new ThreadServerSocket(serverPort);
+            ThreadServerSocket threadServerSocket = new ThreadServerSocket(serverSocket);
             String line = null;
             
             while((line = keyboard.readLine()) != null) {
@@ -34,11 +35,13 @@ public class ServerChat
                     System.out.println("Enter exit for programm over");
                 }
             }
-            threadServerSocket.isDone = true;
             if (!threadServerSocket.t.isInterrupted()) {
                 threadServerSocket.t.interrupt();
-//                threadServerSocket.t.wait(1000);
             }
+            try {
+                serverSocket.close();
+            }
+            catch (IOException ignored) {} //ошибки неинтересны
         } catch(Exception except) { 
             except.printStackTrace(); 
         }
