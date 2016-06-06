@@ -16,6 +16,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
@@ -26,13 +27,15 @@ public class ThreadMessages implements Runnable {
 
         private List<ThreadListenSocket> listThreadListenSocket;
         private List<Socket> listSocket; 
+        private ReentrantLock lockData;
         private String name;
 	Thread t;
 
-        ThreadMessages (List<ThreadListenSocket> listthreadlistensocket, List<Socket> listsocket) {
+        ThreadMessages (List<ThreadListenSocket> listthreadlistensocket, List<Socket> listsocket, ReentrantLock lockdata) {
             try {
                 listThreadListenSocket = listthreadlistensocket;
                 listSocket = listsocket;
+                lockData = lockdata;
                 name = "Thread of messages";
         	System.out.println(name);
 // Initialization of message buffer                

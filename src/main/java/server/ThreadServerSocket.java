@@ -15,6 +15,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.*;
 
 /**
  *
@@ -23,6 +24,7 @@ import java.util.List;
 public class ThreadServerSocket implements Runnable {
     List<ThreadListenSocket> listThreadListenSocket = new ArrayList<ThreadListenSocket>();
     List<Socket> listSocket = new ArrayList<Socket>();
+    ReentrantLock lockData = new ReentrantLock(); 
     
     private ServerSocket serverSocket; // create a server socket and bind it to the port
     private String name;
@@ -38,7 +40,7 @@ public class ThreadServerSocket implements Runnable {
         }        
         public void run() {
             try	{
-                ThreadMessages threadMessages = new ThreadMessages(listThreadListenSocket, listSocket);
+                ThreadMessages threadMessages = new ThreadMessages(listThreadListenSocket, listSocket, lockData);
                     
                 while(t.isAlive()) {
          	 
@@ -62,7 +64,7 @@ public class ThreadServerSocket implements Runnable {
                     out.flush();
 
                     listSocket.add(socket);
-                    ThreadListenSocket listen = new ThreadListenSocket((listThreadListenSocket.size()) + ". Thread listen " + nick, socket);
+                    ThreadListenSocket listen = new ThreadListenSocket((listThreadListenSocket.size()) + ". Thread listen " + nick, socket, lockData);
                     listThreadListenSocket.add(listen);
                     
                 }

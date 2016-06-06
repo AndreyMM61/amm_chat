@@ -9,6 +9,7 @@ import java.io.*;
 import java.net.Socket;
 import java.time.*;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
@@ -19,13 +20,15 @@ public class ThreadListenSocket implements Runnable {
 
         private String name;
 //        private Socket socket;
+        private ReentrantLock lockData;
         private BufferedReader in;
 	Thread t;
 
-	ThreadListenSocket(String namethread, Socket clientsocket) {
+	ThreadListenSocket(String namethread, Socket clientsocket, ReentrantLock lockdata) {
             try {
 		name = namethread;
 //                socket = clientsocket;
+                lockData = lockdata;
         	System.out.println("Now there is connection " + name);
 // Initialization of message buffer                
                 messages = new LinkedList();
