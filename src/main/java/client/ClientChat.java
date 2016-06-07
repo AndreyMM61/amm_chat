@@ -6,10 +6,6 @@
 package client;
 
 import java.net.*;
-import java.io.*;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
 /**
  *
  * @author mam
@@ -30,13 +26,29 @@ public class ClientChat {
         String nickPassword  = args[3];   // the client password
 
         try {
-            ThreadListen listen;
             InetAddress ipAddress = InetAddress.getByName(serverAddress); // create an object with the IP address.
             System.out.println("Try to connect to the IP address " + serverAddress + " and port " + serverPort + "...");
             Socket socket = new Socket(ipAddress, serverPort); // create a socket with the IP address and port of the server.
             System.out.println("Now there is connection!!!");
             System.out.println();
 
+            ThreadSend sendToSocket = new ThreadSend("Thread send", socket, nickName);
+            ThreadListen listen = new ThreadListen("Thread listen", socket, nickName);
+            
+            while (sendToSocket.t.isAlive() && listen.t.isAlive()) {};
+
+            System.out.println("Exit from main while!!!");
+            System.exit(0);
+/*
+            if (sendToSocket.t.isAlive()) {
+                sendToSocket.t.interrupt();
+                sendToSocket.Close();
+            }
+            System.out.println("sendToSocket!!! - " + sendToSocket.t.isAlive());
+            if (listen.t.isAlive()) listen.Close();
+            System.out.println("listen!!! - " + listen.t.isAlive());
+*/
+            /*
             String line = null;
             ZonedDateTime timeUTC;
             ZonedDateTime timeCurrent = ZonedDateTime.now();
@@ -64,18 +76,18 @@ public class ClientChat {
                     System.out.println(timeCurrent.format(DateTimeFormatter.ofPattern("HH:mm")) + line.substring(line.indexOf("<"), line.length()));
             }
             line = null;
-            listen = new ThreadListen("Thread listen", socket, nickName);
+            ThreadListen listen = new ThreadListen("Thread listen", socket, nickName);
 
-            BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in)); // Create a stream for reading from the keyboard
             System.out.print(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + "<" + nickName + "> ");
 
             while ((line = keyboard.readLine()) != null) {
-                if (line.length() != 0) out.println("<" + nickName + "> " + line); // прибавляем ник и отсылаем введенную строку на сервер.
+                if (line.length() != 0) out.println("<" + nickName + "> " + line); // Add nick to line and send to socket
                 if (line.equalsIgnoreCase("exit")){
                     break;
                 }
                 System.out.print(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + "<" + nickName + "> ");
             } 
+*/            
         } catch (Exception except) {
             except.printStackTrace();
         }

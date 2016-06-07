@@ -5,18 +5,9 @@
  */
 package server;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
@@ -27,15 +18,13 @@ public class ThreadMessages implements Runnable {
 
         private List<ThreadListenSocket> listThreadListenSocket;
         private List<Socket> listSocket; 
-        private ReentrantLock lockData;
         private String name;
 	Thread t;
 
-        ThreadMessages (List<ThreadListenSocket> listthreadlistensocket, List<Socket> listsocket, ReentrantLock lockdata) {
+        ThreadMessages (List<ThreadListenSocket> listthreadlistensocket, List<Socket> listsocket) {
             try {
                 listThreadListenSocket = listthreadlistensocket;
                 listSocket = listsocket;
-                lockData = lockdata;
                 name = "Thread of messages";
         	System.out.println(name);
 // Initialization of message buffer                
@@ -51,27 +40,36 @@ public class ThreadMessages implements Runnable {
                 
 	public void run() {
             try	{
-                while (t.isAlive()) {
-                    for (int i=0; i<listThreadListenSocket.size(); i++) {
-                        if (!listThreadListenSocket.get(i).messages.isEmpty()) {
-                            while (!listThreadListenSocket.get(i).messages.isEmpty()) {
-                                String msg = listThreadListenSocket.get(i).messages.poll();
-                                Messages.addLast(msg);
-                                while (Messages.size() > 20) {
-                                    Messages.remove();
+                while (!t.isInterrupted()) {
+                    synchronized (listThreadListenSocket) {
+                        for (int i=0; i<listThreadListenSocket.size(); ) {
+                                if (!listThreadListenSocket.get(i).t.isAlive()) {
+                                    listThreadListenSocket.remove(i);
+                                    listSocket.remove(i);
+                                    continue;
                                 }
-                                for (int j=0; j<listThreadListenSocket.size(); j++) {
-                                    if (j != i) {
-                                        PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(listSocket.get(j).getOutputStream())), true);
-                                        out.println(msg);
-                                        out.flush();
-//                                        out.close();
+                                while (!listThreadListenSocket.get(i).messages.isEmpty()) {
+                                    String msg = listThreadListenSocket.get(i).messages.poll();
+                                    Messages.addLast(msg);
+                                    while (Messages.size() > 20) {
+                                        Messages.remove();
+                                    }
+                                    for (int j=0; j<listThreadListenSocket.size(); j++) {
+                                        if (j != i) {
+                                            listThreadListenSocket.get(j).Send(msg);
+                                        }
                                     }
                                 }
-                            }
+                                i++;
                         }
                     }
-                    Thread.sleep(200);
+                    try {
+                        Thread.sleep(5);
+                    }
+                    catch (InterruptedException ignory) {
+                        Thread.currentThread().interrupt();
+                        continue;
+                    }
                 }
             } 
             catch(Exception except) {
