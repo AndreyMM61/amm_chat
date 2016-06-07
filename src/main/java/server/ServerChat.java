@@ -1,3 +1,6 @@
+/*
+ * Server of chat
+ */
 package server;
 
 import java.net.*;
@@ -20,12 +23,12 @@ public class ServerChat
        
         try {
             ServerSocket serverSocket = new ServerSocket(serverPort); // create a server socket and bind it to the port
-            BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in));
-            ThreadServerSocket threadServerSocket = new ThreadServerSocket(serverSocket);
+            BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in)); // create a keyboard buffer
+            ThreadServerSocket threadServerSocket = new ThreadServerSocket(serverSocket); // create thread server socket
             String line = null;
-            
+// main loop of polling the keyboard             
             while((line = keyboard.readLine()) != null) {
-                if (line.equalsIgnoreCase("exit")){
+                if (line.equalsIgnoreCase("exit")){  // if equal to 'exit' to finish the program
                     System.out.println(line);
                     break;
                 }
@@ -39,7 +42,7 @@ public class ServerChat
             try {
                 serverSocket.close();
             }
-            catch (IOException ignored) {} //ошибки неинтересны
+            catch (IOException ignored) {} // errors are not interesting
         } catch(Exception except) { 
             except.printStackTrace(); 
         }
