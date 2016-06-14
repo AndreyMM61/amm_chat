@@ -4,16 +4,12 @@
 package client;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.Socket;
+import java.io.ObjectOutputStream;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import message.Message;
 
 /**
  *
@@ -23,45 +19,16 @@ public class ThreadSend implements Runnable {
         private BufferedReader keyboard; // Create a stream for reading from the keyboard
         private String name;
         private String nickName;
-        private BufferedReader in;
-        private PrintWriter out;
-        private String line;
-        private ZonedDateTime timeUTC;
-        private ZonedDateTime timeCurrent;
-        private ZoneId zoneCurrent;
         private String timeMessage;    
-        private Socket socket;
+        private ObjectOutputStream out;
 	Thread t;
 
 
-	ThreadSend(String namethread, Socket socket, String nickName) {
+	ThreadSend(String namethread, ObjectOutputStream out, String nickName) {
             try {
 		this.name = namethread;
-                this.socket = socket;
+                this.out = out;
                 this.nickName = nickName;
-                line = null;
-// Create a thread of client socket and start                
-                ZonedDateTime timeCurrent = ZonedDateTime.now();
-                ZoneId zoneCurrent = timeCurrent.getZone();
-// Create a stream to read characters from the socket                
-                out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), true);
-                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-                Send("<" + nickName + "> "); // add nick and send the entered term to the server to discover
-                while((line = in.readLine()) != null) {
-                    if (line.equalsIgnoreCase("end")) {
-                        break;
-                    }
-// Parse the string to get the UTC time                
-                    timeMessage = line; 
-                    timeMessage = line.substring(0, timeMessage.indexOf("<"));
-                    timeUTC = ZonedDateTime.parse(timeMessage);
-// Convert time to the current area and adding to the message display
-                    timeCurrent = timeUTC.withZoneSameInstant(zoneCurrent);
-                    System.out.println(timeCurrent.format(DateTimeFormatter.ofPattern("HH:mm")) + line.substring(line.indexOf("<"), line.length()));
-                }
-                line = null;
-
                 t = new Thread(this, name);
                 t.setPriority(t.getPriority() - 1);
 		t.start();  // start a thread
@@ -70,34 +37,37 @@ public class ThreadSend implements Runnable {
             }
         }
 
-synchronized void Send (String msg) {
-            out.println(msg);
-            out.flush();
+synchronized void Send (Message msg) throws Exception {
+            out.writeObject(msg);
         }
 
 	public void run() {
             try {
 // Create a stream to read characters from the socket                
                 keyboard = new BufferedReader(new InputStreamReader(System.in)); // Create a stream for reading from the keyboard
-                System.out.print(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + "<" + nickName + "> ");
-
+                System.out.print(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "[" + nickName + "] ");
                 while (!t.isInterrupted()) {
                     try {
-                        line = keyboard.readLine();
-                        if (!line.isEmpty()) {
-                            Send("<" + nickName + "> " + line); // Add nick to line and send to socket
-                            if (line.equalsIgnoreCase("exit")){
-                                Thread.currentThread().interrupt();
-                                continue;
+                        String line = keyboard.readLine();
+                        Message message = new Message (nickName, line);
+//                        System.out.println("ThreadSend Line 66 " + line);
+//                        System.out.println("ThreadSend Line 68 " + message.getMessage());
+                        if (!message.getMessage().isEmpty()) {
+//                            System.out.println("ThreadSend Line 70 " + message.getMessage());
+                            Send(message); // message send to socket
+                            if (message.getMessage().equalsIgnoreCase("quit")) {
+//                                System.out.println("ThreadSend Line 73 " + message.getMessage());
+                                break;
                             }
                         }
                     }
                     catch (Exception ignory) {
-                        Thread.currentThread().interrupt();
-                        continue;
+//                        System.out.println("ThreadSend Line 79 ");
+                        break;
                     }
-                    System.out.print(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + "<" + nickName + "> ");
+                    System.out.print(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "[" + nickName + "] ");
                 } 
+//                System.out.println("ThreadSend Line 84");
             } catch (Exception e) {
                 e.printStackTrace();
             }

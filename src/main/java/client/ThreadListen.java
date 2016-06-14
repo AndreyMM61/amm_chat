@@ -5,10 +5,12 @@ package client;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import message.Message;
 
 /**
  *
@@ -17,17 +19,14 @@ import java.time.format.DateTimeFormatter;
 public class ThreadListen implements Runnable {
         private String name;
         private String nickName;
-        private BufferedReader in;
-        private Socket socket;
+        private ObjectInputStream in;
 	Thread t;
 
-	ThreadListen(String namethread, Socket socket, String nickName) {
+	ThreadListen(String namethread, ObjectInputStream in, String nickName) {
             try {
 		this.name = namethread;
-                this.socket = socket;
+                this.in = in;
                 this.nickName = nickName;
-// Create a stream to read characters from the socket                
-                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 // Create a thread of client socket and start                
                 t = new Thread(this, name);
                 t.setPriority(t.getPriority() - 1);
@@ -37,57 +36,32 @@ public class ThreadListen implements Runnable {
             }
         }
 
-synchronized void Close () {
-            try {
-                if (!socket.isClosed()) {
-                    socket.close();
-                    System.out.println("Socket in close");
-                }
-                in.close();
-                System.out.println("Buffer in close");
-            }
-            catch (Exception e) {
-                System.err.println(e.toString());
-                e.printStackTrace(); 
-            }
-        }
-	
-	public void run() {
+        public void run() {
             try	{
                 
-                String line = null;
-                ZonedDateTime timeUTC;
-                ZonedDateTime timeCurrent = ZonedDateTime.now();
-                ZoneId zoneCurrent = timeCurrent.getZone();
-                String timeMessage;        
-          
+                Message message;
+
          	while(!t.isInterrupted()) {
-                    line = in.readLine();
-                    if (!line.isEmpty()) {
-                        if (line.equalsIgnoreCase("exit")){
+                    message = (Message)in.readObject();
+                    if (!message.getMessage().isEmpty()) {
+                        if (message.getMessage().equalsIgnoreCase("quit")){
                             System.out.println("Server is interrupted");
-                            Thread.currentThread().interrupt();
                             break;
                         }
-// Parse the string to get the UTC time                
-                        timeMessage = line; 
-                        timeMessage = line.substring(0, timeMessage.indexOf("<"));
-                        timeUTC = ZonedDateTime.parse(timeMessage);
-// Convert time to the current area and adding to the message display
-                        timeCurrent = timeUTC.withZoneSameInstant(zoneCurrent);
                         System.out.println();
-                        System.out.println(timeCurrent.format(DateTimeFormatter.ofPattern("HH:mm")) + line.substring(line.indexOf("<"), line.length()));
-                        System.out.println(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + "<" + nickName + "> ");
+                        System.out.println(message.getTime() + "<" + message.getNickName() + "> " + message.getMessage());
+                        System.out.print(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "[" + nickName + "] ");
                     }
         	}
             } 
             catch(Exception e) {
-		System.out.println(">> " + name + " is interrupted");
+//		System.out.println(">> " + name + " is interrupted");
                 e.printStackTrace(); 
             }
             finally {
                 try {
-                    Close();
+                    in.close();
+                    System.out.println("Buffer in close");
                 }
                 catch (Exception e) {
                     System.err.println(e.toString());

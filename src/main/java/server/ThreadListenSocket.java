@@ -1,39 +1,38 @@
 /*
- * The listener thread client socket
+ * The listener thread client clientSocket
  */
 package server;
 
 import java.io.*;
 import java.net.Socket;
-import java.time.*;
 import java.util.*;
+import message.Message;
 
 /**
  *
  * @author mam
  */
 public class ThreadListenSocket implements Runnable {
-       	LinkedList<String> messages;
+       	LinkedList<Message> messages;
         String nickname;
 
         private String name;
-        private BufferedReader in;
-        private Socket socket;
-        private PrintWriter out;
+        private ObjectInputStream in;
+        private ObjectOutputStream out;
+        private Socket clientSocket;
 	Thread t;
 
-	ThreadListenSocket(String nick, String namethread, Socket clientsocket) {
+	ThreadListenSocket(String nickname, String namethread, Socket clientsocket, ObjectOutputStream out, ObjectInputStream in) {
             try {
-                nickname = nick;
-		name = namethread;
-                socket = clientsocket;
-        	System.out.println("Now there is connection " + name);
+                this.nickname = nickname;
+		this.name = namethread;
+                this.clientSocket = clientsocket;
+                this.out = out;
+                this.in = in;
 // Initialization of message buffer                
-                messages = new LinkedList();
-// Create a stream to read characters from the socket                
-                in = new BufferedReader(new InputStreamReader(clientsocket.getInputStream()));
-                out =  new PrintWriter(new BufferedWriter(new OutputStreamWriter(clientsocket.getOutputStream())), true);
-// Create a thread of client socket and start                
+                messages = new LinkedList<Message>();
+        	System.out.println("Now there is connection " + name);
+// Create a thread of client clientSocket and start                
                 t = new Thread(this, name);
                 t.setPriority(t.getPriority() - 1);
 		t.start();  // start a thread
@@ -42,14 +41,13 @@ public class ThreadListenSocket implements Runnable {
             }
         }
 
-synchronized void Send (String msg) {
-            out.println(msg);
-            out.flush();
+synchronized void Send (Message message) throws Exception {
+            out.writeObject(message);
         }
 
 synchronized void Close () {
             try {
-                socket.close();
+                clientSocket.close();
             }
             catch (Exception ignory) {
             }
@@ -58,35 +56,24 @@ synchronized void Close () {
 	public void run() {
             try	{
                 
-                String line;
-         	ZoneId zoneUTC = ZoneId.of("UTC");
-         	ZonedDateTime timeCurrent;
-         	ZonedDateTime timeUTC;
-          
+                Message message;
          	while(!t.isInterrupted()) {
                         try {
-                            line = in.readLine();
-                            if (line == null) {
-                                Thread.currentThread().interrupt();
-                                continue;
+                            message = (Message)in.readObject();
+                            if (message.getMessage().isEmpty()) {
+                                break;
                             }
                         }
                         catch (Exception ignory) {
-                            Thread.currentThread().interrupt();
-                            continue;
+                            break;
                         }
-                        if (line.substring(line.indexOf(">")+2, line.length()).trim().equalsIgnoreCase("exit")){
+                        if (message.getMessage().equalsIgnoreCase("quit")){
                             System.out.println(">> " + name + " is over");
-                            Thread.currentThread().interrupt();
-                            continue;
+                            break;
                         }
-// Current time to UTC
-           		timeCurrent = ZonedDateTime.now();
-           		timeUTC = timeCurrent.withZoneSameInstant(zoneUTC);
-                        line = timeUTC + line;
-           		System.out.println(line);
-// Add time to string and send to of message fuffer. 
-                        messages.addLast(line);
+           		System.out.println(message.getTime() + "<" + message.getNickName() + "> " + message.getMessage());
+// send to of message fuffer. 
+                        messages.addLast(message);
          	}
             } 
             catch(Exception except) {

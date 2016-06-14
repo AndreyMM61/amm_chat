@@ -4,29 +4,30 @@
 package server;
 
 import java.net.Socket;
-import java.util.LinkedList;
 import java.util.List;
+import message.Message;
 
 /**
  *
  * @author Андрей
  */
 public class ThreadMessages implements Runnable {
-       	LinkedList<String> Messages;
+        List<Message> queueMessages;
 
         private List<ThreadListenSocket> listThreadListenSocket;
         private List<Socket> listSocket; 
+        private List<String> listUsers;
         private String name;
 	Thread t;
 
-        ThreadMessages (List<ThreadListenSocket> listthreadlistensocket, List<Socket> listsocket) {
+        ThreadMessages (List<ThreadListenSocket> listthreadlistensocket, List<Socket> listsocket, List<String> listusers, List<Message> queueMessages) {
             try {
-                listThreadListenSocket = listthreadlistensocket;
-                listSocket = listsocket;
+                this.listThreadListenSocket = listthreadlistensocket;
+                this.listSocket = listsocket;
+                this.listUsers = listusers;
+                this.queueMessages = queueMessages;
                 name = "Thread of messages";
         	System.out.println(name);
-// Initialization of message buffer                
-                Messages = new LinkedList();
 // Create a thread of message and start                
                 t = new Thread(this, name);
                 t.setPriority(t.getPriority() - 1);
@@ -35,22 +36,32 @@ public class ThreadMessages implements Runnable {
                 except.printStackTrace(); 
             }
         }
-                
+        
 	public void run() {
             try	{
+// Initialization of message buffer                
                 while (!t.isInterrupted()) {
                     synchronized (listThreadListenSocket) {
                         for (int i=0; i<listThreadListenSocket.size(); ) {
                                 if (!listThreadListenSocket.get(i).t.isAlive()) {
+                                    Message msg = new Message("Server", listThreadListenSocket.get(i).nickname + " out of the chat");
+                                    for (int j=0; j<listThreadListenSocket.size(); j++) {
+                                        if (j != i) {
+                                            listThreadListenSocket.get(j).Send(msg);
+                                        }
+                                    }
                                     listThreadListenSocket.remove(i);
                                     listSocket.remove(i);
+                                    listUsers.remove(i);
                                     continue;
                                 }
                                 while (!listThreadListenSocket.get(i).messages.isEmpty()) {
-                                    String msg = listThreadListenSocket.get(i).messages.poll();
-                                    Messages.addLast(msg);
-                                    while (Messages.size() > 20) {
-                                        Messages.remove();
+                                    Message msg = listThreadListenSocket.get(i).messages.poll();
+                                    synchronized (queueMessages) {
+                                        queueMessages.add(msg);
+                                        while (queueMessages.size() > 20) {
+                                            queueMessages.remove(0);
+                                        }
                                     }
                                     for (int j=0; j<listThreadListenSocket.size(); j++) {
                                         if (j != i) {
@@ -62,7 +73,7 @@ public class ThreadMessages implements Runnable {
                         }
                     }
                     try {
-                        Thread.sleep(5);
+                        Thread.sleep(10);
                     }
                     catch (InterruptedException ignory) {
                         Thread.currentThread().interrupt();
